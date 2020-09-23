@@ -1,0 +1,27 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "C/C++: g++ build active file",
+            "command": "g++ -c MqttManager.cpp -c main.cpp",
+            "args": [
+                "-g",
+                "-o",
+                "${fileDirname}/bin/GenericMqttClient",
+                "-I ${workspaceFolder}/lib/",
+                
+            ],
+            "options": {
+                "cwd": ""
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "version": "2.0.0"
+}

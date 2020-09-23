@@ -1,0 +1,323 @@
+blob: 4049ca4e87316baa14ad72accf638c1b1d7a3124
+#include <string>
+#include <functional>
+#include <vector>
+#include "MQTTClient.h"
+
+namespace GenericClient {
+
+    typedef std::string std_str; 
+    typedef std::function<void()> void_func;
+    
+    class EventHandler {
+    public:
+        EventHandler(std_str, void_func);
+        ~EventHandler();
+        std_str Topic;
+        void_func Action;
+    };
+
+    //Options required for connection to MQTT Server.
+    // ClientID: Identification used by MQTT server for this client. Any string should do.
+    // ServerURI: URI used to connect to MQTT server. mqtt[s]://[username][:password]@host.domain[:port]
+    // PersitancDir: Directory for file based persistence of inbound messages. Only used if Persistence type is MQTTClient::MQTTCLIENT_PERSISTENCE_DEFAULT.
+    // Persitence type: See MQTTClient.h for details.
+    struct ConnectionOptions {
+        char*               ClientID;
+        char*               ServerURI;
+        char*               PersistenceDir;
+        int                 PersitanceType;
+    };
+
+    typedef std::vector<EventHandler> SubscriptionsVector;
+
+    class MqttManager {
+        public:
+            struct ConnectionOptions    ConnectionOptions;
+            SubscriptionsVector         Subscriptions;
+            MQTTClient                  Client;
+
+            MqttManager();
+            ~MqttManager();
+            int Connect();
+            int Connect(MQTTClient* client, struct ConnectionOptions ConnectionOptions);
+            int Subscribe(std_str const topic, EventHandler eventHandler);
+
+        private:
+            void setClientID( struct ConnectionOptions * options);
+            char* buildClientID();
+            MQTTClient_init_options* initClientOptions();
+
+    };
+}
+--------------------------------
+blob: a25bb5c833573fe219a3db8b8d5ab3135d4cbc08
+#include <unistd.h>
+#include <limits.h>
+#include "MqttManager.h"
+
+
+namespace GenericClient {
+
+//===================================================================
+// Event Handler Class
+//===================================================================
+
+std_str Topic;
+void_func Action;
+
+EventHandler::EventHandler(std_str topic, void_func action) {
+    this->Topic = topic;
+    this->Action = action;
+}
+
+EventHandler::~EventHandler() {
+    //May need to free func?
+}
+
+
+//===================================================================
+//  Public members
+//===================================================================
+    SubscriptionsVector         Subscriptions;
+    MQTTClient                  Client;
+    struct ConnectionOptions    ConnectionOptions;
+
+//===================================================================
+//  Ctor
+//===================================================================
+    MqttManager::MqttManager() {
+
+    };
+    
+    MqttManager::~MqttManager() {
+        //Deallocate subscriptions list.
+        if(this->Subscriptions.empty()) {
+            this->Subscriptions.clear();
+            SubscriptionsVector().swap(this->Subscriptions);
+        }
+    }
+
+//===================================================================
+//  public methods:
+//  - Instantiates connection to MQTT server with class members.
+//===================================================================
+    int MqttManager::Connect() {
+        return Connect(&this->Client, this->ConnectionOptions);
+    };
+
+    //If successful, client will be the actiev server connection.
+    int MqttManager::Connect(MQTTClient* client, struct ConnectionOptions ConnectionOptions) {
+        if( !ConnectionOptions.ServerURI ) return 0;
+
+        try {
+            MQTTClient_init_options* options = initClientOptions();
+            MQTTClient_global_init(options);
+
+            int hr = MQTTClient_create(  
+                            client
+                            ,ConnectionOptions.ServerURI
+                            ,ConnectionOptions.ClientID
+                            ,ConnectionOptions.PersitanceType
+                            ,ConnectionOptions.PersistenceDir);
+
+            if( hr == MQTTCLIENT_SUCCESS ) return 0;
+            //Trace.Log("Connection to ${ServerURI} succesful!");
+            //
+
+        } 
+        catch(int e) {
+
+        }
+        return 1;
+    };
+
+    int MqttManager::Subscribe(std_str topic, EventHandler eventHandler ) 
+    {
+        return -1;
+    }
+
+//===================================================================
+//  private methods
+//===================================================================
+    
+    //Struct version MUST be 1.
+    //We initialize SSL on connect.
+    MQTTClient_init_options* MqttManager::initClientOptions() {
+        MQTTClient_init_options* options = new MQTTClient_init_options();
+        options->do_openssl_init = 1;
+        options->struct_version = 1;
+        return options;
+    }
+      char* MqttManager::buildClientID() {
+        char* ret;
+        char hostname[HOST_NAME_MAX];
+
+        int hr = gethostname(hostname, HOST_NAME_MAX);
+        if(hr > 0)
+        {
+            ret = hostname;
+        }
+        return ret;
+    }
+
+    void MqttManager::setClientID( struct ConnectionOptions* options) {
+        options->ClientID = buildClientID();
+    }
+}
+--------------------------------
+blob: 23e633e8bc191438318d1de6c025ec200a6b1d20
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "g++ - Build and debug active file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "C/C++: g++ build active file",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}
+--------------------------------
+blob: 0411522def3c8f49d8e48adf01f2aa69eb971f18
+CXX = g++
+EXENAME = GenericMqttClient
+
+#	Directories
+HDIR = ./Headers
+LDIR = ./lib
+ODIR = ./obj
+SDIR = ./Source
+BIN = ./bin
+DEBUGDIR = $(BIN)/debug
+RELDIR = $(BIN)/release
+
+# Project Files
+SRC = $(wildcard $(SDIR)/*.cpp)
+OBJ = $(SRC:.c=.o)
+
+# Includes
+DEPS = $(HDIR)/MqttManager.h
+LIBS = -lpaho-mqtt3c
+
+#flags
+CXXFLAGS = -Wall -I$(HDIR) -L$(LDIR)
+DEBUGFLAGS = $(CXXFLAGS) -g
+
+# Object files
+$(ODIR)/%.o: %.cpp $(DEPS)
+	$(CXX) -c -o $@ $< $(CXXFLAGS) $(LIBS)
+
+# Release
+release: prep $(RELDIR)/$(EXENAME)
+$(RELDIR)/$(EXENAME): $(OBJ)
+	$(CXX) -o $@ $^  $(CXXFLAGS) $(LIBS) 
+
+# Debug
+debug: prep $(DEBUGDIR)/$(EXENAME)
+$(DEBUGDIR)/$(EXENAME): $(OBJ)
+	$(CXX) -o $@ $^  $(DEBUGFLAGS) $(LIBS) 
+
+#
+#	Other Rules
+#
+all: clean debug release
+
+prep:
+	@mkdir -p $(DEBUGDIR) $(RELDIR)
+
+clean:
+	rm -rf $(BIN)/*
+--------------------------------
+blob: 4fb1f5ca7f192de4e779f225666397f3258a37a6
+./.vscode
+--------------------------------
+blob: 6fb4f941a1d4331f098f703c53fbd43aed496a9c
+#include <iostream>
+#include <string>
+#include <vector>
+#include "MqttManager.h"
+
+using namespace std;
+
+int main()
+{
+    std::cout << "Hello World!" << endl;
+    return 0;
+}
+--------------------------------
+blob: 153ddaa56b4ec4b85a531a921916232bb6b9c2dd
+libpaho-mqtt3c.so.1
+--------------------------------
+blob: 1738c59b5d04af12c18c43cee5dd1dd886754619
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/lib/*"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
+--------------------------------
+blob: f8a97bc382a0be07357e919834f6421605bca027
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "C/C++: g++ build active file",
+            "command": "g++ -c MqttManager.cpp -c main.cpp",
+            "args": [
+                "-g",
+                "-o",
+                "${fileDirname}/bin/GenericMqttClient",
+                "-I ${workspaceFolder}/lib/",
+                
+            ],
+            "options": {
+                "cwd": ""
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "version": "2.0.0"
+}
+--------------------------------
+blob: 3ca3e0d953db52e9b7dd7f680dc9452b13b08355
+To Do:
+
+-   Create a topic subscription class that includes a topic filter and response function.
+-   Build a make file to link multiple source files.
+--------------------------------
