@@ -12,7 +12,7 @@ RELDIR = $(BIN)/release
 
 # Project Files
 SRC = $(wildcard $(SDIR)/*.cpp)
-OBJ = $(SRC:.c=.o)
+OBJ = $(SRC:.cpp=.o)
 
 # Includes
 DEPS = $(HDIR)/MqttManager.h
@@ -20,29 +20,32 @@ LIBS = -lpaho-mqtt3c
 
 #flags
 CXXFLAGS = -Wall -I$(HDIR) -L$(LDIR)
-DEBUGFLAGS = $(CXXFLAGS) -g
+# DEBUGFLAGS = $(CXXFLAGS) -g
 
 # Object files
-$(ODIR)/%.o: %.cpp $(DEPS)
+$(SDIR)/%.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(LIBS)
 
 # Release
-release: prep $(RELDIR)/$(EXENAME)
+release: prep $(RELDIR)/$(EXENAME) objclean
 $(RELDIR)/$(EXENAME): $(OBJ)
 	$(CXX) -o $@ $^  $(CXXFLAGS) $(LIBS) 
 
 # Debug
-debug: prep $(DEBUGDIR)/$(EXENAME)
+debug: prep $(DEBUGDIR)/$(EXENAME) objclean
 $(DEBUGDIR)/$(EXENAME): $(OBJ)
-	$(CXX) -o $@ $^  $(DEBUGFLAGS) $(LIBS) 
+	$(CXX) -g -o $@ $^ $(CXXFLAGS)  $(LIBS)
 
 #
 #	Other Rules
 #
-all: clean debug release
+all: clean debug release objclean
 
 prep:
 	@mkdir -p $(DEBUGDIR) $(RELDIR)
+
+objclean:
+	rm -r $(SDIR)/*.o
 
 clean:
 	rm -rf $(BIN)/*

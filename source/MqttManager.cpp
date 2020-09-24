@@ -1,4 +1,3 @@
-
 #include <unistd.h>
 #include <limits.h>
 #include "MqttManager.h"
@@ -15,13 +14,12 @@ void_func Action;
 
 EventHandler::EventHandler(std_str topic, void_func action) {
     this->Topic = topic;
-    this->Action = action;
-}
+        this->Action = action;
+    }
 
-EventHandler::~EventHandler() {
-    //May need to free func?
-}
-
+    EventHandler::~EventHandler() {
+        //May need to free func?
+    }
 
 //===================================================================
 //  Public members
@@ -96,7 +94,8 @@ EventHandler::~EventHandler() {
         options->struct_version = 1;
         return options;
     }
-      char* MqttManager::buildClientID() {
+    
+    char* MqttManager::buildClientID() {
         char* ret;
         char hostname[HOST_NAME_MAX];
 
