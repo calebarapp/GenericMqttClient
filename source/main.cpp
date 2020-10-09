@@ -7,9 +7,17 @@ using namespace GenericClient;
 
 int main() {
     std::cout << "Attempting to connect to MQTT Server..." << std::endl;
-    MqttManager * mqtt;
-    mqtt = new MqttManager();
     
+    MqttManager * mqtt;
+    ConnectionOptions * options;
+
+    mqtt = new MqttManager();    
+    options = new ConnectionOptions();
+    //mqtt[s]://[username][:password]@host.domain[:port]
+   // const char *uri = "mqtt://@localhost:1883";
+    
+    //options->ServerURI = uri;
+
     if(mqtt->Connect()) {
         std::cout << "Connection succesfull!" << std::endl;
     } 
